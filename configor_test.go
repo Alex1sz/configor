@@ -1,17 +1,14 @@
 package configor_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"os"
 	"reflect"
 	"testing"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/BurntSushi/toml"
-	"github.com/jinzhu/configor"
+	"github.com/alex1sz/configor"
 )
 
 type Anonymous struct {
@@ -55,8 +52,8 @@ func generateDefaultConfig() Config {
 			Email string `required:"true"`
 		}{
 			{
-				Name:  "Jinzhu",
-				Email: "wosmvp@gmail.com",
+				Name:  "Alex",
+				Email: "whosyourdaddy@gmail.com",
 			},
 		},
 		Anonymous: Anonymous{
@@ -67,63 +64,20 @@ func generateDefaultConfig() Config {
 }
 
 func TestLoadNormalConfig(t *testing.T) {
-	config := generateDefaultConfig()
-	if bytes, err := json.Marshal(config); err == nil {
+	origConfig := generateDefaultConfig()
+	if bytes, err := json.Marshal(origConfig); err == nil {
 		if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
 			defer file.Close()
+			log.Println(file.Name())
 			defer os.Remove(file.Name())
 			file.Write(bytes)
 
 			var result Config
 			configor.Load(&result, file.Name())
-			if !reflect.DeepEqual(result, config) {
-				t.Errorf("result should equal to original configuration")
-			}
-		}
-	} else {
-		t.Errorf("failed to marshal config")
-	}
-}
-
-func TestLoadConfigFromTomlWithExtension(t *testing.T) {
-	var (
-		config = generateDefaultConfig()
-		buffer bytes.Buffer
-	)
-
-	if err := toml.NewEncoder(&buffer).Encode(config); err == nil {
-		if file, err := ioutil.TempFile("/tmp", "configor.toml"); err == nil {
-			defer file.Close()
-			defer os.Remove(file.Name())
-			file.Write(buffer.Bytes())
-
-			var result Config
-			configor.Load(&result, file.Name())
-			if !reflect.DeepEqual(result, config) {
-				t.Errorf("result should equal to original configuration")
-			}
-		}
-	} else {
-		t.Errorf("failed to marshal config")
-	}
-}
-
-func TestLoadConfigFromTomlWithoutExtension(t *testing.T) {
-	var (
-		config = generateDefaultConfig()
-		buffer bytes.Buffer
-	)
-
-	if err := toml.NewEncoder(&buffer).Encode(config); err == nil {
-		if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
-			defer file.Close()
-			defer os.Remove(file.Name())
-			file.Write(buffer.Bytes())
-
-			var result Config
-			configor.Load(&result, file.Name())
-			if !reflect.DeepEqual(result, config) {
-				t.Errorf("result should equal to original configuration")
+			if !reflect.DeepEqual(result, origConfig) {
+				log.Println(result)
+				log.Println(origConfig)
+				t.Errorf("result should equal original configuration")
 			}
 		}
 	} else {
@@ -184,17 +138,17 @@ func TestLoadConfigurationByEnvironment(t *testing.T) {
 	if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
 		defer file.Close()
 		defer os.Remove(file.Name())
-		configBytes, _ := yaml.Marshal(config)
-		config2Bytes, _ := yaml.Marshal(config2)
-		ioutil.WriteFile(file.Name()+".yaml", configBytes, 0644)
-		defer os.Remove(file.Name() + ".yaml")
-		ioutil.WriteFile(file.Name()+".production.yaml", config2Bytes, 0644)
-		defer os.Remove(file.Name() + ".production.yaml")
+		configBytes, _ := json.Marshal(config)
+		config2Bytes, _ := json.Marshal(config2)
+		ioutil.WriteFile(file.Name()+".json", configBytes, 0644)
+		defer os.Remove(file.Name() + ".json")
+		ioutil.WriteFile(file.Name()+".production.json", config2Bytes, 0644)
+		defer os.Remove(file.Name() + ".production.json")
 
 		var result Config
 		os.Setenv("CONFIGOR_ENV", "production")
 		defer os.Setenv("CONFIGOR_ENV", "")
-		if err := configor.Load(&result, file.Name()+".yaml"); err != nil {
+		if err := configor.Load(&result, file.Name()+".json"); err != nil {
 			t.Errorf("No error should happen when load configurations, but got %v", err)
 		}
 
@@ -217,16 +171,16 @@ func TestLoadConfigurationByEnvironmentSetByConfig(t *testing.T) {
 	if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
 		defer file.Close()
 		defer os.Remove(file.Name())
-		configBytes, _ := yaml.Marshal(config)
-		config2Bytes, _ := yaml.Marshal(config2)
-		ioutil.WriteFile(file.Name()+".yaml", configBytes, 0644)
-		defer os.Remove(file.Name() + ".yaml")
-		ioutil.WriteFile(file.Name()+".production.yaml", config2Bytes, 0644)
-		defer os.Remove(file.Name() + ".production.yaml")
+		configBytes, _ := json.Marshal(config)
+		config2Bytes, _ := json.Marshal(config2)
+		ioutil.WriteFile(file.Name()+".json", configBytes, 0644)
+		defer os.Remove(file.Name() + ".json")
+		ioutil.WriteFile(file.Name()+".production.json", config2Bytes, 0644)
+		defer os.Remove(file.Name() + ".production.json")
 
 		var result Config
 		var Configor = configor.New(&configor.Config{Environment: "production"})
-		if Configor.Load(&result, file.Name()+".yaml"); err != nil {
+		if Configor.Load(&result, file.Name()+".json"); err != nil {
 			t.Errorf("No error should happen when load configurations, but got %v", err)
 		}
 

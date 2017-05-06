@@ -1,5 +1,6 @@
 # Configor
 
+Fork of github.com/jinzhu/configor
 Golang Configuration tool that support YAML, JSON, Shell Environment
 
 ## Usage
@@ -9,7 +10,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jinzhu/configor"
+	"github.com/alex1sz/configor"
 )
 
 var Config = struct {
@@ -26,7 +27,7 @@ var Config = struct {
 		Name  string
 		Email string `required:"true"`
 	}
-}{}
+}
 
 func main() {
 	configor.Load(&Config, "config.yml")
@@ -148,19 +149,6 @@ func main() {
 	// configor.Load(&Config) // only load configurations from shell env & flag
 }
 ```
-
-## Supporting the project
-
-[![http://patreon.com/jinzhu](http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png)](http://patreon.com/jinzhu)
-
-
-## Author
-
-**jinzhu**
-
-* <http://github.com/jinzhu>
-* <wosmvp@gmail.com>
-* <http://twitter.com/zhangjinzhu>
 
 ## License
 

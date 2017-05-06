@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	// "log"
 	"os"
 	"path"
 	"reflect"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-	yaml "gopkg.in/yaml.v1"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func (configor *Configor) getENVPrefix(config interface{}) string {
@@ -76,28 +76,41 @@ func (configor *Configor) getConfigurationFiles(files ...string) []string {
 
 func processFile(config interface{}, file string) error {
 	data, err := ioutil.ReadFile(file)
+
 	if err != nil {
 		return err
 	}
 
-	switch {
-	case strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml"):
+	if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
 		return yaml.Unmarshal(data, config)
-	case strings.HasSuffix(file, ".toml"):
-		return toml.Unmarshal(data, config)
-	case strings.HasSuffix(file, ".json"):
-		return json.Unmarshal(data, config)
-	default:
-		if toml.Unmarshal(data, config) != nil {
-			if json.Unmarshal(data, config) != nil {
-				if yaml.Unmarshal(data, config) != nil {
-					return errors.New("failed to decode config")
-				}
-			}
-		}
-		return nil
 	}
+
+	if json.Unmarshal(data, config) != nil {
+		if yaml.Unmarshal(data, config) != nil {
+			return errors.New("failed to decode config")
+		}
+	}
+	return nil
 }
+
+// }
+
+// func processFile(config interface{}, file string) error {
+// 	data, err := ioutil.ReadFile(file)
+//
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
+// 		return yaml.Unmarshal(data, config)
+// 	}
+//
+// 	if yaml.Unmarshal(data, config) != nil {
+// 		// log.Println("Gets here just before failed to decocode config")
+// 		err = errors.New("failed to decode config")
+// 	}
+// 	return nil
+// }
 
 func getPrefixForStruct(prefixes []string, fieldStruct *reflect.StructField) []string {
 	if fieldStruct.Anonymous && fieldStruct.Tag.Get("anonymous") == "true" {
