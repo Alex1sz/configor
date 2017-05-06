@@ -93,25 +93,6 @@ func processFile(config interface{}, file string) error {
 	return nil
 }
 
-// }
-
-// func processFile(config interface{}, file string) error {
-// 	data, err := ioutil.ReadFile(file)
-//
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
-// 		return yaml.Unmarshal(data, config)
-// 	}
-//
-// 	if yaml.Unmarshal(data, config) != nil {
-// 		// log.Println("Gets here just before failed to decocode config")
-// 		err = errors.New("failed to decode config")
-// 	}
-// 	return nil
-// }
-
 func getPrefixForStruct(prefixes []string, fieldStruct *reflect.StructField) []string {
 	if fieldStruct.Anonymous && fieldStruct.Tag.Get("anonymous") == "true" {
 		return prefixes
