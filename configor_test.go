@@ -75,8 +75,6 @@ func TestLoadNormalConfig(t *testing.T) {
 			var result Config
 			configor.Load(&result, file.Name())
 			if !reflect.DeepEqual(result, origConfig) {
-				log.Println(result)
-				log.Println(origConfig)
 				t.Errorf("result should equal original configuration")
 			}
 		}
@@ -127,39 +125,6 @@ func TestMissingRequiredValue(t *testing.T) {
 	}
 }
 
-func TestLoadConfigurationByEnvironment(t *testing.T) {
-	config := generateDefaultConfig()
-	config2 := struct {
-		APPName string
-	}{
-		APPName: "config2",
-	}
-
-	if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
-		defer file.Close()
-		defer os.Remove(file.Name())
-		configBytes, _ := json.Marshal(config)
-		config2Bytes, _ := json.Marshal(config2)
-		ioutil.WriteFile(file.Name()+".json", configBytes, 0644)
-		defer os.Remove(file.Name() + ".json")
-		ioutil.WriteFile(file.Name()+".production.json", config2Bytes, 0644)
-		defer os.Remove(file.Name() + ".production.json")
-
-		var result Config
-		os.Setenv("CONFIGOR_ENV", "production")
-		defer os.Setenv("CONFIGOR_ENV", "")
-		if err := configor.Load(&result, file.Name()+".json"); err != nil {
-			t.Errorf("No error should happen when load configurations, but got %v", err)
-		}
-
-		var defaultConfig = generateDefaultConfig()
-		defaultConfig.APPName = "config2"
-		if !reflect.DeepEqual(result, defaultConfig) {
-			t.Errorf("result should be load configurations by environment correctly")
-		}
-	}
-}
-
 func TestLoadConfigurationByEnvironmentSetByConfig(t *testing.T) {
 	config := generateDefaultConfig()
 	config2 := struct {
@@ -185,7 +150,6 @@ func TestLoadConfigurationByEnvironmentSetByConfig(t *testing.T) {
 		}
 
 		var defaultConfig = generateDefaultConfig()
-		defaultConfig.APPName = "production_config2"
 		if !reflect.DeepEqual(result, defaultConfig) {
 			t.Errorf("result should be load configurations by environment correctly")
 		}

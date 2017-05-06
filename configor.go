@@ -50,14 +50,12 @@ func (configor *Configor) GetEnvironment() string {
 	return configor.Environment
 }
 
-// Load will unmarshal configurations to struct from files that you provide
-func (configor *Configor) Load(config interface{}, files ...string) (err error) {
-	for _, file := range configor.getConfigurationFiles(files...) {
-		err = processFile(config, file)
+// Load will unmarshal configurations to struct from file that you provide
+func (configor *Configor) Load(config interface{}, file string) (err error) {
+	err = processFile(config, file)
 
-		if err != nil {
-			return
-		}
+	if err != nil {
+		return
 	}
 	prefix := configor.getENVPrefix(config)
 
@@ -75,6 +73,6 @@ func ENV() string {
 }
 
 // Load will unmarshal configurations to struct from files that you provide
-func Load(config interface{}, files ...string) error {
-	return New(nil).Load(config, files...)
+func Load(config interface{}, file string) error {
+	return New(nil).Load(config, file)
 }
