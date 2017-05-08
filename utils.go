@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	// "log"
 	"os"
-	"path"
 	"reflect"
 	"strings"
 
@@ -22,24 +21,6 @@ func (configor *Configor) getENVPrefix(config interface{}) string {
 		return "Configor"
 	}
 	return configor.Config.ENVPrefix
-}
-
-func getConfigurationFileWithENVPrefix(file, env string) (string, error) {
-	var (
-		envFile string
-		extname = path.Ext(file)
-	)
-
-	if extname == "" {
-		envFile = fmt.Sprintf("%v.%v", file, env)
-	} else {
-		envFile = fmt.Sprintf("%v.%v%v", strings.TrimSuffix(file, extname), env, extname)
-	}
-
-	if fileInfo, err := os.Stat(envFile); err == nil && fileInfo.Mode().IsRegular() {
-		return envFile, nil
-	}
-	return "", fmt.Errorf("failed to find file %v", file)
 }
 
 func processFile(config interface{}, file string) error {
@@ -99,10 +80,12 @@ func processTags(config interface{}, prefixes ...string) error {
 				break
 			}
 		}
+		isBlank := reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface())
 
-		if isBlank := reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()); isBlank {
+		if isBlank {
 			// Set default configuration if blank
-			if value := fieldStruct.Tag.Get("default"); value != "" {
+			value := fieldStruct.Tag.Get("default")
+			if value != "" {
 				if err := yaml.Unmarshal([]byte(value), field.Addr().Interface()); err != nil {
 					return err
 				}

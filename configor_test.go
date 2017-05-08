@@ -3,7 +3,6 @@ package configor_test
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"reflect"
 	"testing"
@@ -68,7 +67,6 @@ func TestLoadNormalConfig(t *testing.T) {
 	if bytes, err := json.Marshal(origConfig); err == nil {
 		if file, err := ioutil.TempFile("/tmp", "configor"); err == nil {
 			defer file.Close()
-			log.Println(file.Name())
 			defer os.Remove(file.Name())
 			file.Write(bytes)
 
