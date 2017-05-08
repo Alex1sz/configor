@@ -51,6 +51,7 @@ func getPrefixForStruct(prefixes []string, fieldStruct *reflect.StructField) []s
 
 func processTags(config interface{}, prefixes ...string) error {
 	configValue := reflect.Indirect(reflect.ValueOf(config))
+
 	if configValue.Kind() != reflect.Struct {
 		return errors.New("invalid config, should be struct")
 	}
@@ -72,9 +73,14 @@ func processTags(config interface{}, prefixes ...string) error {
 		}
 
 		// Load From Shell ENV
-		for _, env := range envNames {
-			if value := os.Getenv(env); value != "" {
-				if err := yaml.Unmarshal([]byte(value), field.Addr().Interface()); err != nil {
+		for _, envVarKey := range envNames {
+			value := os.Getenv(envVarKey)
+			// log.Println("Value...:")
+			// log.Println(envName)
+			if value != "" {
+				err := yaml.Unmarshal([]byte(value), field.Addr().Interface())
+
+				if err != nil {
 					return err
 				}
 				break
@@ -85,8 +91,11 @@ func processTags(config interface{}, prefixes ...string) error {
 		if isBlank {
 			// Set default configuration if blank
 			value := fieldStruct.Tag.Get("default")
+
 			if value != "" {
-				if err := yaml.Unmarshal([]byte(value), field.Addr().Interface()); err != nil {
+				err := yaml.Unmarshal([]byte(value), field.Addr().Interface())
+
+				if err != nil {
 					return err
 				}
 			} else if fieldStruct.Tag.Get("required") == "true" {
@@ -94,21 +103,24 @@ func processTags(config interface{}, prefixes ...string) error {
 				return errors.New(fieldStruct.Name + " is required, but blank")
 			}
 		}
-
-		for field.Kind() == reflect.Ptr {
-			field = field.Elem()
-		}
-
+		// notice weird for conditional below
+		// TODO: confirm is pointless and remove
+		// for field.Kind() == reflect.Ptr {
+		// 	field = field.Elem()
+		// }
 		if field.Kind() == reflect.Struct {
-			if err := processTags(field.Addr().Interface(), getPrefixForStruct(prefixes, &fieldStruct)...); err != nil {
+			err := processTags(field.Addr().Interface(), getPrefixForStruct(prefixes, &fieldStruct)...)
+
+			if err != nil {
 				return err
 			}
 		}
-
 		if field.Kind() == reflect.Slice {
 			for i := 0; i < field.Len(); i++ {
 				if reflect.Indirect(field.Index(i)).Kind() == reflect.Struct {
-					if err := processTags(field.Index(i).Addr().Interface(), append(getPrefixForStruct(prefixes, &fieldStruct), fmt.Sprint(i))...); err != nil {
+					err := processTags(field.Index(i).Addr().Interface(), append(getPrefixForStruct(prefixes, &fieldStruct), fmt.Sprint(i))...)
+
+					if err != nil {
 						return err
 					}
 				}
