@@ -13,14 +13,16 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func (configor *Configor) getENVPrefix(config interface{}) string {
-	if configor.Config.ENVPrefix == "" {
-		if prefix := os.Getenv("CONFIGOR_ENV_PREFIX"); prefix != "" {
-			return prefix
+func (configor *Configor) getENVPrefix(config interface{}) (prefix string) {
+	prefix = configor.Config.ENVPrefix
+	if prefix == "" {
+		prefix = os.Getenv("CONFIGOR_ENV_PREFIX")
+
+		if prefix == "" {
+			prefix = "Configor"
 		}
-		return "Configor"
 	}
-	return configor.Config.ENVPrefix
+	return
 }
 
 func processFile(config interface{}, file string) error {
@@ -49,14 +51,40 @@ func getPrefixForStruct(prefixes []string, fieldStruct *reflect.StructField) []s
 	return append(prefixes, fieldStruct.Name)
 }
 
+func setEnvNames(envName string, prefixes []string, fieldName string) (envNames []string) {
+	if envName == "" {
+		envNames = append(envNames, strings.Join(append(prefixes, fieldName), "_"))                  // Configor_DB_Name
+		envNames = append(envNames, strings.ToUpper(strings.Join(append(prefixes, fieldName), "_"))) // CONFIGOR_DB_NAME
+	} else {
+		envNames = []string{envName}
+	}
+	return
+}
+
+func yamlUnmarshalValue(value string, field interface{}) (err error) {
+	err = yaml.Unmarshal([]byte(value), field)
+
+	if err != nil {
+		return
+	}
+	return
+}
+
+func useDefaultFieldValue(fieldStruct *reflect.StructField, field interface{}) (err error) {
+	defaultValue := fieldStruct.Tag.Get("default")
+
+	if defaultValue != "" {
+		err = yamlUnmarshalValue(defaultValue, field)
+	} else if fieldStruct.Tag.Get("required") == "true" {
+		err = errors.New(fieldStruct.Name + " is required, but blank")
+	}
+	return
+}
+
 func processTags(config interface{}, prefixes ...string) error {
 	configValue := reflect.Indirect(reflect.ValueOf(config))
-
-	if configValue.Kind() != reflect.Struct {
-		return errors.New("invalid config, should be struct")
-	}
-
 	configType := configValue.Type()
+
 	for i := 0; i < configType.NumField(); i++ {
 		var (
 			envNames    []string
@@ -64,50 +92,25 @@ func processTags(config interface{}, prefixes ...string) error {
 			field       = configValue.Field(i)
 			envName     = fieldStruct.Tag.Get("env") // read configuration from shell env
 		)
-
-		if envName == "" {
-			envNames = append(envNames, strings.Join(append(prefixes, fieldStruct.Name), "_"))                  // Configor_DB_Name
-			envNames = append(envNames, strings.ToUpper(strings.Join(append(prefixes, fieldStruct.Name), "_"))) // CONFIGOR_DB_NAME
-		} else {
-			envNames = []string{envName}
-		}
-
+		envNames = setEnvNames(envName, prefixes, fieldStruct.Name)
 		// Load From Shell ENV
 		for _, envVarKey := range envNames {
-			value := os.Getenv(envVarKey)
-			// log.Println("Value...:")
-			// log.Println(envName)
-			if value != "" {
-				err := yaml.Unmarshal([]byte(value), field.Addr().Interface())
+			envVarValue := os.Getenv(envVarKey)
 
-				if err != nil {
-					return err
-				}
+			if envVarValue != "" {
+				yamlUnmarshalValue(envVarValue, field.Addr().Interface())
 				break
 			}
 		}
-		isBlank := reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface())
+		fieldValueIsBlank := reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface())
 
-		if isBlank {
-			// Set default configuration if blank
-			value := fieldStruct.Tag.Get("default")
+		if fieldValueIsBlank {
+			err := useDefaultFieldValue(&fieldStruct, field.Addr().Interface())
 
-			if value != "" {
-				err := yaml.Unmarshal([]byte(value), field.Addr().Interface())
-
-				if err != nil {
-					return err
-				}
-			} else if fieldStruct.Tag.Get("required") == "true" {
-				// return error if it is required but blank
-				return errors.New(fieldStruct.Name + " is required, but blank")
+			if err != nil {
+				return err
 			}
 		}
-		// notice weird for conditional below
-		// TODO: confirm is pointless and remove
-		// for field.Kind() == reflect.Ptr {
-		// 	field = field.Elem()
-		// }
 		if field.Kind() == reflect.Struct {
 			err := processTags(field.Addr().Interface(), getPrefixForStruct(prefixes, &fieldStruct)...)
 
